@@ -64,7 +64,7 @@ const app = new Elysia()
         set.status = 500;
         return {
             error: 'Internal server error',
-            message: error.message
+            message: error
         };
     })
 
