@@ -4,10 +4,10 @@ import { staticPlugin } from '@elysiajs/static';
 import dotenv from 'dotenv';
 
 // 导入路由
-import { userRoutes } from './routes/user';
-import { reportRoutes } from './routes/report';
-import { uploadRoutes } from './routes/upload';
-import { analysisRoutes } from './routes/analysis';
+import { userRoutes } from './routes/user.js';
+import { reportRoutes } from './routes/report.js';
+import { uploadRoutes } from './routes/upload.js';
+import { analysisRoutes } from './routes/analysis.js';
 
 // 加载环境变量
 dotenv.config();
