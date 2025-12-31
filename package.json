@@ -21,12 +21,12 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "elysia": "^1.1.26",
-        "@elysiajs/cors": "^1.1.1",
+        "@alicloud/openapi-client": "^0.4.11",
+        "@elysiajs/cors": "^1.4.1",
         "@elysiajs/static": "^1.1.1",
         "@prisma/client": "^5.22.0",
-        "@alicloud/openapi-client": "^0.4.11",
-        "dotenv": "^16.4.7"
+        "dotenv": "^16.4.7",
+        "elysia": "^1.1.26"
     },
     "devDependencies": {
         "@types/node": "^22.10.2",
