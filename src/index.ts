@@ -3,12 +3,6 @@ import { cors } from '@elysiajs/cors';
 import { staticPlugin } from '@elysiajs/static';
 import dotenv from 'dotenv';
 
-// 导入路由
-import { userRoutes } from './routes/user.js';
-import { reportRoutes } from './routes/report.js';
-import { uploadRoutes } from './routes/upload.js';
-import { analysisRoutes } from './routes/analysis.js';
-
 // 加载环境变量
 dotenv.config();
 
@@ -22,51 +16,18 @@ const app = new Elysia()
         credentials: true,
     }))
 
-    // 静态文件服务（用于访问上传的图片）
-    .use(staticPlugin({
-        assets: process.env.UPLOAD_DIR || './uploads',
-        prefix: '/uploads',
-    }))
-
-    // 新增静态资源服务（用于访问 /var/anset/assets 下的图片）
+    // 只保留静态资源服务（用于访问 /var/anset/assets 下的图片）
     .use(staticPlugin({
         assets: '/var/anset/assets',
         prefix: '/static',
     }))
 
-    // 健康检查
+    // 健康检查接口
     .get('/', () => ({
         message: 'Anset Backend API',
         version: '1.0.0',
         status: 'running',
     }))
-
-    .get('/health', () => ({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-    }))
-
-    // 注册路由
-    .use(userRoutes)
-    .use(reportRoutes)
-    .use(uploadRoutes)
-    .use(analysisRoutes)
-
-    // 错误处理
-    .onError(({ code, error, set }) => {
-        console.error('Error:', error);
-
-        if (code === 'NOT_FOUND') {
-            set.status = 404;
-            return { error: 'Route not found' };
-        }
-
-        set.status = 500;
-        return {
-            error: 'Internal server error',
-            message: error
-        };
-    })
 
     .listen({
         hostname: HOST,
