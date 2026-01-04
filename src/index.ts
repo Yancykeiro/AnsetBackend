@@ -10,6 +10,8 @@ import * as http from 'http';
 
 // const PORT = process.env.PORT || 3000;
 // const HOST = process.env.HOST || '0.0.0.0';
+const PORT = 4010;
+const HOST = '0.0.0.0';
 
 const app = new Elysia()
     // 配置 CORS（允许微信小程序访问）
@@ -56,7 +58,6 @@ const server = http.createServer((req, res) => {
     });
 });
 
-const PORT = 4010;
-server.listen(PORT, () => {
-    console.log(`Elysia server is running on http://localhost:${PORT}`);
+server.listen({ port: PORT, host: HOST }, () => {
+    console.log(`Elysia server is running on http://${HOST}:${PORT}`);
 });
