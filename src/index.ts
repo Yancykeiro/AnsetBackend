@@ -54,7 +54,8 @@ const server = http.createServer((req, res) => {
         });
         const response = await app.handle(request);
         res.writeHead(response.status, Object.fromEntries(response.headers));
-        res.end(await response.text());
+        const responseBody = await response.arrayBuffer();
+        res.end(Buffer.from(responseBody));
     });
 });
 
