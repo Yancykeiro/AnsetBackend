@@ -34,13 +34,20 @@ const app = new Elysia()
 
 const server = http.createServer((req, res) => {
     const { method, url, headers } = req;
-    const chunks = [];
-    req.on('data', chunk => chunks.push(chunk));
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
     req.on('end', async () => {
         const body = Buffer.concat(chunks);
+        const headersObj: Record<string, string> = {};
+        Object.entries(headers).forEach(([key, value]) => {
+            if (value) {
+                headersObj[key] = Array.isArray(value) ? value[0] : value;
+            }
+        });
+
         const request = new Request(`http://localhost${url}`, {
             method,
-            headers,
+            headers: headersObj,
             body: method === 'GET' || method === 'HEAD' ? undefined : body
         });
         const response = await app.handle(request);
