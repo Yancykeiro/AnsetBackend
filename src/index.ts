@@ -58,6 +58,6 @@ const server = http.createServer((req, res) => {
     });
 });
 
-server.listen({ port: PORT, host: HOST }, () => {
-    console.log(`Elysia server is running on http://${HOST}:${PORT}`);
+server.listen(PORT, HOST, () => {
+    console.log(`🦊 Elysia server is running on http://${HOST}:${PORT}`);
 });
