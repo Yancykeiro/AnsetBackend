@@ -37,7 +37,7 @@ const app = new Elysia()
         set.status = code === 'NOT_FOUND' ? 404 : 500;
         return {
             success: false,
-            error: error.message || 'Internal server error'
+            error: 'Internal server error'
         };
     });
 
