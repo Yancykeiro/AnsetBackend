@@ -1,4 +1,3 @@
-// 环境变量类型声明
 declare global {
     namespace NodeJS {
         interface ProcessEnv {
@@ -12,6 +11,8 @@ declare global {
             MAX_FILE_SIZE?: string;
             JWT_SECRET?: string;
             NODE_ENV?: 'development' | 'production' | 'test';
+            SSL_KEY_PATH?: string;
+            SSL_CERT_PATH?: string;
         }
     }
 }

@@ -1,29 +1,27 @@
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { staticPlugin } from '@elysiajs/static';
-import * as https from 'https';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as http from 'http';
 
 const PORT = 4010;
 const HOST = '0.0.0.0';
 
 const app = new Elysia()
-    // 配置 CORS(允许微信小程序访问)
+    // 配置 CORS（允许微信小程序访问）
     .use(cors({
         origin: process.env.NODE_ENV === 'production'
             ? ['https://anset.top']
-            : true,
+            : true, // 开发环境允许所有来源
         credentials: true,
     }))
 
-    // 静态资源服务(用于访问 /var/anset/assets 下的图片)
+    // 静态资源服务（用于访问 /var/anset/assets 下的图片）
     .use(staticPlugin({
         assets: '/var/anset/assets',
         prefix: '/static',
     }))
 
-    // 健康检查接口
+    // 健康检查接口 - 使用一致的响应格式
     .get('/', () => ({
         success: true,
         data: {
@@ -33,7 +31,7 @@ const app = new Elysia()
         }
     }))
 
-    // 错误处理中间件
+    // 错误处理中间件 - 符合 API 设计原则
     .onError(({ code, error, set }) => {
         console.error('Error occurred:', code, error);
         set.status = code === 'NOT_FOUND' ? 404 : 500;
@@ -44,21 +42,12 @@ const app = new Elysia()
     });
 
 /**
- * HTTPS 服务器配置
+ * HTTP 服务器包装器
  * 
- * @description 读取 SSL 证书并创建 HTTPS 服务器
+ * @description 将 Node.js HTTP 请求转发到 Elysia 应用
+ * 使用 http.createServer 包装以确保兼容性
  */
-const httpsOptions = {
-    key: fs.readFileSync(process.env.SSL_KEY_PATH || '/etc/ssl/anset/anset.top.key'),
-    cert: fs.readFileSync(process.env.SSL_CERT_PATH || '/etc/ssl/anset/anset.top.pem')
-};
-
-/**
- * HTTPS 服务器包装器
- * 
- * @description 将 Node.js HTTPS 请求转发到 Elysia 应用
- */
-const server = https.createServer(httpsOptions, (req, res) => {
+const server = http.createServer((req, res) => {
     const { method, url, headers } = req;
     const chunks: Buffer[] = [];
 
@@ -77,7 +66,7 @@ const server = https.createServer(httpsOptions, (req, res) => {
             });
 
             // 创建 Web 标准的 Request 对象
-            const request = new Request(`https://localhost${url}`, {
+            const request = new Request(`http://localhost${url}`, {
                 method,
                 headers: headersObj,
                 body: method === 'GET' || method === 'HEAD' ? undefined : body
@@ -87,7 +76,7 @@ const server = https.createServer(httpsOptions, (req, res) => {
             const response = await app.handle(request);
             res.writeHead(response.status, Object.fromEntries(response.headers));
 
-            // 使用 arrayBuffer 保持二进制数据完整性(图片等静态资源)
+            // 使用 arrayBuffer 保持二进制数据完整性（图片等静态资源）
             const responseBody = await response.arrayBuffer();
             res.end(Buffer.from(responseBody));
         } catch (error) {
@@ -103,5 +92,6 @@ const server = https.createServer(httpsOptions, (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-    console.log(`🦊 Elysia HTTPS server is running on https://${HOST}:${PORT}`);
+    console.log(`🦊 Elysia server is running on http://${HOST}:${PORT}`);
 });
+
