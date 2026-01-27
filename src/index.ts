@@ -15,6 +15,9 @@ const app = new Elysia()
             ? ['https://anset.top']
             : true,
         credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        exposeHeaders: ['Content-Length', 'Content-Type'],
     }))
 
     // 静态资源服务(用于访问 /var/anset/assets 下的图片)
