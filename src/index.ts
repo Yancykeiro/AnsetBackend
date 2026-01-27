@@ -35,7 +35,19 @@ const app = new Elysia()
             status: 'running',
         }
     }))
-
+    /**
+       * 测试接口 - 用于验证小程序与后端的连接
+       * 
+       * @route GET /api/test
+       * @returns {Object} 包含测试消息的响应
+       */
+    .get('/api/test', () => ({
+        success: true,
+        data: {
+            message: '恭喜!小程序成功连接到 Anset 后端服务 🎉',
+            timestamp: new Date().toISOString(),
+        }
+    }))
     // 错误处理中间件
     .onError(({ code, error, set }) => {
         console.error('Error occurred:', code, error);
