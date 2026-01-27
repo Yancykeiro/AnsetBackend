@@ -4,6 +4,8 @@ import { staticPlugin } from '@elysiajs/static';
 import * as https from 'https';
 import * as fs from 'fs';
 import * as path from 'path';
+import { routes } from './routes';
+
 
 const PORT = 4010;
 const HOST = '0.0.0.0';
@@ -12,7 +14,12 @@ const app = new Elysia()
     // 配置 CORS(允许微信小程序访问)
     .use(cors({
         origin: process.env.NODE_ENV === 'production'
-            ? ['https://anset.top']
+            ? [
+                'https://anset.top',                    // 你的主域名
+                'https://www.anset.top',                // www 子域名
+                'https://servicewechat.com',            // 微信小程序开发者工具
+                /^https:\/\/.*\.servicewechat\.com$/,   // 微信小程序所有子域名(正则匹配)
+            ]
             : true,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -25,29 +32,29 @@ const app = new Elysia()
         assets: '/var/anset/assets',
         prefix: '/static',
     }))
-
-    // 健康检查接口
-    .get('/', () => ({
-        success: true,
-        data: {
-            message: 'Anset Backend API',
-            version: '1.0.0',
-            status: 'running',
-        }
-    }))
-    /**
-       * 测试接口 - 用于验证小程序与后端的连接
-       * 
-       * @route GET /api/test
-       * @returns {Object} 包含测试消息的响应
-       */
-    .get('/api/test', () => ({
-        success: true,
-        data: {
-            message: '恭喜!小程序成功连接到 Anset 后端服务 🎉',
-            timestamp: new Date().toISOString(),
-        }
-    }))
+    .use(routes)
+    // // 健康检查接口
+    // .get('/', () => ({
+    //     success: true,
+    //     data: {
+    //         message: 'Anset Backend API',
+    //         version: '1.0.0',
+    //         status: 'running',
+    //     }
+    // }))
+    // /**
+    //    * 测试接口 - 用于验证小程序与后端的连接
+    //    * 
+    //    * @route GET /api/test
+    //    * @returns {Object} 包含测试消息的响应
+    //    */
+    // .get('/api/test', () => ({
+    //     success: true,
+    //     data: {
+    //         message: '恭喜!小程序成功连接到 Anset 后端服务 🎉',
+    //         timestamp: new Date().toISOString(),
+    //     }
+    // }))
     // 错误处理中间件
     .onError(({ code, error, set }) => {
         console.error('Error occurred:', code, error);
