@@ -1,87 +1,139 @@
-// Prisma Schema - 数据库模型定义
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql" // 或 "mysql"
+  provider = "postgresql" 
   url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+// ============================================================================
 // 用户表
+// ============================================================================
 model User {
   id        String   @id @default(cuid())
-  openId    String   @unique // 微信小程序 openId
+  openId    String   @unique
   nickName  String?
   avatarUrl String?
+  phone     String?
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   reports   Report[]
+  sessions  UploadSession[]
 }
 
-// 改造报告
+// ============================================================================
+// 上传会话表
+// ============================================================================
+model UploadSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  roomType    String
+  budgetRange String
+  
+  status      String   @default("uploading")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  images      TempImage[]
+}
+
+// ============================================================================
+// 临时图片表
+// ============================================================================
+model TempImage {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   UploadSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  url       String
+  type      String
+  order     Int
+  
+  filename  String
+  fileSize  Int
+  
+  createdAt DateTime @default(now())
+}
+
+// ============================================================================
+// 报告表
+// ============================================================================
 model Report {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  roomType    String   // 房间类型：卫生间、厨房等
-  budgetRange String   // 预算范围
+  roomType    String
+  budgetRange String
   
-  status      String   @default("processing") // processing, completed, failed
+  hasSurvey   Boolean  @default(false)
+  surveyData  Json?    // PostgreSQL 支持 Json 类型
+  
+  status      String   @default("analyzing")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   images      Image[]
-  survey      Survey?
   analysis    Analysis?
 }
 
+// ============================================================================
 // 图片表
+// ============================================================================
 model Image {
   id        String   @id @default(cuid())
   reportId  String
-  report    Report   @relation(fields: [reportId], references: [id])
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   
-  url       String   // 图片存储路径
-  order     Int      // 图片顺序
+  url       String
+  type      String
+  order     Int
   
-  createdAt DateTime @default(now())
-}
-
-// 问卷表
-model Survey {
-  id        String   @id @default(cuid())
-  reportId  String   @unique
-  report    Report   @relation(fields: [reportId], references: [id])
-  
-  // 问卷字段（根据你的实际需求调整）
-  style     String?  // 喜欢的风格
-  problems  String?  // 主要问题
-  priority  String?  // 优先级
-  
-  answers   Json?    // 存储其他问卷答案的 JSON 对象
+  filename  String
+  fileSize  Int
   
   createdAt DateTime @default(now())
+  
+  analysis  ImageAnalysis?
 }
 
-// AI 分析结果表
+// ============================================================================
+// 单张图片分析结果
+// ============================================================================
+model ImageAnalysis {
+  id            String   @id @default(cuid())
+  imageId       String   @unique
+  image         Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  
+  riskTitle     String
+  riskAnalysis  String   @db.Text
+  renovation    String   @db.Text
+  priority      String?
+  
+  createdAt     DateTime @default(now())
+}
+
+// ============================================================================
+// 整体分析结果
+// ============================================================================
 model Analysis {
-  id        String   @id @default(cuid())
-  reportId  String   @unique
-  report    Report   @relation(fields: [reportId], references: [id])
+  id            String   @id @default(cuid())
+  reportId      String   @unique
+  report        Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   
-  // AI 分析结果
-  summary       String   @db.Text // 总结
-  problems      String   @db.Text // 发现的问题
-  suggestions   String   @db.Text // 改造建议
-  materials     String?  @db.Text // 建议材料
-  estimatedCost String?           // 预估费用
+  summary       String   @db.Text
+  totalCost     String?
+  priority      String?
   
-  rawResponse   Json?    // 保存 AI 原始响应
+  rawResponse   Json?    // PostgreSQL 支持 Json 类型
   
   createdAt     DateTime @default(now())
 }

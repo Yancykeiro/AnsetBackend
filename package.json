@@ -25,6 +25,7 @@
         "@elysiajs/cors": "^1.4.1",
         "@elysiajs/static": "^1.1.1",
         "@prisma/client": "^5.22.0",
+        "axios": "^1.13.4",
         "dotenv": "^16.4.7",
         "elysia": "^1.1.26"
     },
