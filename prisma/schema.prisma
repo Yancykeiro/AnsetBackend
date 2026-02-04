@@ -3,137 +3,130 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" 
+  provider = "postgresql"
   url      = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-// ============================================================================
-// 用户表
-// ============================================================================
+/// 用户表
 model User {
   id        String   @id @default(cuid())
   openId    String   @unique
   nickName  String?
   avatarUrl String?
   phone     String?
-  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  reports   Report[]
-  sessions  UploadSession[]
+
+  // 关系
+  reports        Report[]
+  uploadSessions UploadSession[]
+
+  @@map("users")
 }
 
-// ============================================================================
-// 上传会话表
-// ============================================================================
+/// 上传会话表（用户选择房间类型和预算后创建）
 model UploadSession {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   roomType    String
   budgetRange String
-  
-  status      String   @default("uploading")
-  
+  status      String   @default("uploading") // uploading, completed, cancelled
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  images      TempImage[]
+
+  // 关系
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images TempImage[]
+
+  @@index([userId])
+  @@map("upload_sessions")
 }
 
-// ============================================================================
-// 临时图片表
-// ============================================================================
+/// 临时图片表（上传会话中的图片）
 model TempImage {
   id        String   @id @default(cuid())
   sessionId String
-  session   UploadSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
   url       String
-  type      String
-  order     Int
-  
+  type      String // 图片类型：淋浴区、马桶区、洗手池等
+  order     Int      @default(0) // 显示顺序
   filename  String
   fileSize  Int
-  
   createdAt DateTime @default(now())
+
+  // 关系
+  session UploadSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("temp_images")
 }
 
-// ============================================================================
-// 报告表
-// ============================================================================
+/// 报告表（用户提交后生成）
 model Report {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   roomType    String
   budgetRange String
-  
+  status      String   @default("pending") // pending, analyzing, completed, failed
   hasSurvey   Boolean  @default(false)
-  surveyData  Json?    // PostgreSQL 支持 Json 类型
-  
-  status      String   @default("analyzing")
-  
+  surveyData  Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  images      Image[]
-  analysis    Analysis?
+
+  // 关系
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images   Image[]
+  analysis Analysis?
+
+  @@index([userId])
+  @@index([status])
+  @@map("reports")
 }
 
-// ============================================================================
-// 图片表
-// ============================================================================
+/// 图片表（报告中的正式图片）
 model Image {
   id        String   @id @default(cuid())
   reportId  String
-  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  
   url       String
   type      String
-  order     Int
-  
-  filename  String
-  fileSize  Int
-  
+  order     Int      @default(0)
   createdAt DateTime @default(now())
-  
-  analysis  ImageAnalysis?
+
+  // 关系
+  report   Report         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  analysis ImageAnalysis?
+
+  @@index([reportId])
+  @@map("images")
 }
 
-// ============================================================================
-// 单张图片分析结果
-// ============================================================================
+/// 图片分析表（AI 对单张图片的分析）
 model ImageAnalysis {
-  id            String   @id @default(cuid())
-  imageId       String   @unique
-  image         Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  
-  riskTitle     String
-  riskAnalysis  String   @db.Text
-  renovation    String   @db.Text
-  priority      String?
-  
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  imageId      String   @unique
+  riskTitle    String
+  riskAnalysis String   @db.Text
+  renovation   String   @db.Text
+  priority     String   @default("medium") // high, medium, low
+  createdAt    DateTime @default(now())
+
+  // 关系
+  image Image @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@map("image_analyses")
 }
 
-// ============================================================================
-// 整体分析结果
-// ============================================================================
+/// 整体分析表（AI 对整个报告的综合分析）
 model Analysis {
-  id            String   @id @default(cuid())
-  reportId      String   @unique
-  report        Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  
-  summary       String   @db.Text
-  totalCost     String?
-  priority      String?
-  
-  rawResponse   Json?    // PostgreSQL 支持 Json 类型
-  
-  createdAt     DateTime @default(now())
+  id          String   @id @default(cuid())
+  reportId    String   @unique
+  summary     String   @db.Text
+  totalCost   String
+  priority    String   @default("medium")
+  rawResponse Json?
+  createdAt   DateTime @default(now())
+
+  // 关系
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("analyses")
 }
