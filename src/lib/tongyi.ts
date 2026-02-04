@@ -1,137 +1,117 @@
-/**
- * 通义千问 AI 服务集成
- * 使用阿里云 DashScope API
- */
+// import OpenAI from 'openai';
 
-interface TongyiImageAnalysisRequest {
-    images: string[]; // 图片 URL 数组
-    roomType: string;
-    budgetRange: string;
-    surveyAnswers?: any;
-}
+// /**
+//  * 通义千问 AI 客户端
+//  * 
+//  * @description 使用阿里云 DashScope API（兼容 OpenAI SDK）
+//  */
+// const client = new OpenAI({
+//     apiKey: process.env.DASHSCOPE_API_KEY,
+//     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+// });
 
-interface TongyiAnalysisResult {
-    summary: string;
-    problems: string;
-    suggestions: string;
-    materials?: string;
-    estimatedCost?: string;
-    rawResponse: any;
-}
+// /**
+//  * AI 分析参数接口
+//  */
+// interface AnalysisParams {
+//     images: string[];
+//     roomType: string;
+//     budgetRange: string;
+//     surveyAnswers?: Record<string, any>;
+// }
 
-/**
- * 调用通义千问分析图片
- */
-export async function analyzeImagesWithTongyi(
-    request: TongyiImageAnalysisRequest
-): Promise<TongyiAnalysisResult> {
-    const apiKey = process.env.TONGYI_API_KEY;
+// /**
+//  * AI 分析结果接口
+//  */
+// interface AnalysisResult {
+//     summary: string;
+//     estimatedCost?: string;
+//     priority?: string;
+//     rawResponse: any;
+// }
 
-    if (!apiKey) {
-        throw new Error('TONGYI_API_KEY is not configured');
-    }
+// /**
+//  * 使用通义千问分析图片
+//  * 
+//  * @param params 分析参数
+//  * @returns AI 分析结果
+//  */
+// export async function analyzeImagesWithTongyi(
+//     params: AnalysisParams
+// ): Promise<AnalysisResult> {
+//     try {
+//         const { images, roomType, budgetRange, surveyAnswers } = params;
 
-    // 构建提示词
-    const prompt = buildPrompt(request);
+//         // 构建 prompt
+//         const userPrompt = `
+// 你是一位专业的适老化改造顾问。请分析以下${roomType}的图片，并提供详细的改造建议。
 
-    try {
-        // 调用通义千问 API
-        // 注意：这里使用的是通义千问的多模态API（qwen-vl-plus）
-        const response = await fetch('https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: 'qwen-vl-plus', // 或 qwen-vl-max
-                input: {
-                    messages: [
-                        {
-                            role: 'system',
-                            content: '你是一个专业的家居设计顾问，擅长分析房间照片并提供改造建议。'
-                        },
-                        {
-                            role: 'user',
-                            content: [
-                                { text: prompt },
-                                ...request.images.map(url => ({ image: url }))
-                            ]
-                        }
-                    ]
-                },
-                parameters: {
-                    max_tokens: 2000,
-                }
-            })
-        });
+// **房间类型**: ${roomType}
+// **预算范围**: ${budgetRange}
+// ${surveyAnswers ? `**用户需求**: ${JSON.stringify(surveyAnswers, null, 2)}` : ''}
 
-        if (!response.ok) {
-            throw new Error(`Tongyi API error: ${response.statusText}`);
-        }
+// 请按照以下格式输出 JSON：
+// {
+//     "summary": "总体总结（200字以内）",
+//     "estimatedCost": "预算估算（如：12000-15000元）",
+//     "priority": "优先级（high/medium/low）"
+// }
+//         `.trim();
 
-        const data = await response.json();
+//         // 构建消息内容（多模态：文本 + 图片）
+//         const content: any[] = [
+//             { type: 'text', text: userPrompt },
+//             ...images.map((url) => ({
+//                 type: 'image_url',
+//                 image_url: { url },
+//             })),
+//         ];
 
-        // 解析 AI 响应
-        return parseAIResponse(data);
+//         console.log(`[AI] 调用通义千问分析 ${images.length} 张图片...`);
 
-    } catch (error) {
-        console.error('Tongyi API call failed:', error);
-        throw error;
-    }
-}
+//         // 调用通义千问 API
+//         const completion = await client.chat.completions.create({
+//             model: 'qwen-vl-max', // 多模态模型
+//             messages: [
+//                 {
+//                     role: 'user',
+//                     content,
+//                 },
+//             ],
+//             temperature: 0.7,
+//             max_tokens: 2000,
+//         });
 
-/**
- * 构建分析提示词
- */
-function buildPrompt(request: TongyiImageAnalysisRequest): string {
-    return `
-请分析这个${request.roomType}的照片，用户的预算范围是${request.budgetRange}。
+//         const responseText = completion.choices[0]?.message?.content || '{}';
+//         console.log(`[AI] 通义千问响应:`, responseText.substring(0, 200));
 
-请按照以下格式提供分析报告：
+//         // 解析 JSON 响应
+//         let parsedResult: any;
+//         try {
+//             // 尝试提取 JSON（AI 可能返回 markdown 代码块）
+//             const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
+//             const jsonText = jsonMatch ? jsonMatch[1] : responseText;
+//             parsedResult = JSON.parse(jsonText);
+//         } catch {
+//             // 解析失败，使用默认值
+//             parsedResult = {
+//                 summary: responseText.substring(0, 200),
+//                 estimatedCost: budgetRange,
+//                 priority: 'medium',
+//             };
+//         }
 
-1. **整体评估**
-   - 简要描述房间当前状况
+//         return {
+//             summary: parsedResult.summary || '分析结果生成中...',
+//             estimatedCost: parsedResult.estimatedCost || budgetRange,
+//             priority: parsedResult.priority || 'medium',
+//             rawResponse: completion,
+//         };
 
-2. **存在问题**
-   - 列出发现的主要问题（如老旧、布局不合理、功能性不足等）
-
-3. **改造建议**
-   - 根据预算范围提供具体的改造方案
-   - 包括布局优化、功能提升、美观度改善等方面
-
-4. **建议材料**
-   - 推荐适合的装修材料和品牌
-
-5. **预估费用**
-   - 给出大致的改造费用范围
-
-请确保建议实用、具体，并符合用户的预算范围。
-`.trim();
-}
-
-/**
- * 解析 AI 响应结果
- */
-function parseAIResponse(data: any): TongyiAnalysisResult {
-    const content = data.output?.choices?.[0]?.message?.content || '';
-
-    // 这里简化处理，实际应该根据响应格式进行结构化解析
-    return {
-        summary: extractSection(content, '整体评估'),
-        problems: extractSection(content, '存在问题'),
-        suggestions: extractSection(content, '改造建议'),
-        materials: extractSection(content, '建议材料'),
-        estimatedCost: extractSection(content, '预估费用'),
-        rawResponse: data,
-    };
-}
-
-/**
- * 从文本中提取特定章节
- */
-function extractSection(content: string, sectionName: string): string {
-    const regex = new RegExp(`\\*\\*${sectionName}\\*\\*([\\s\\S]*?)(?=\\*\\*|$)`, 'i');
-    const match = content.match(regex);
-    return match ? match[1].trim() : '';
-}
+//     } catch (error) {
+//         console.error('[AI] 通义千问分析失败:', error);
+//         throw new Error(
+//             `AI analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+//         );
+//     }
+// }
