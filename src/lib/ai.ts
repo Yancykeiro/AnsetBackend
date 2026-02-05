@@ -4,8 +4,10 @@ import axios from 'axios';
  * 百炼智能体配置
  */
 const DASHSCOPE_CONFIG = {
-    apiKey: process.env.DASHSCOPE_API_KEY || '',
-    appId: process.env.DASHSCOPE_APP_ID || '',
+    apiKey: 'sk-8d870d21086549d584c50b1f1980d929',
+    appId: '80cdc3bc489749398bf5f3055dd2ff2d',
+    // apiKey: process.env.DASHSCOPE_API_KEY || 'sk-8d870d21086549d584c50b1f1980d929',
+    // appId: process.env.DASHSCOPE_APP_ID || '80cdc3bc489749398bf5f3055dd2ff2d',
     baseUrl: 'https://dashscope.aliyuncs.com/api/v1/apps',
     timeout: 120000 // 2分钟超时
 };
@@ -134,10 +136,7 @@ export async function analyzeSpace(
     request: AnalysisRequest
 ): Promise<AnalysisResponse> {
     try {
-        console.log('[AI分析] 开始分析...');
-        console.log('[AI分析] 空间类型:', request.room.name);
-        console.log('[AI分析] 预算范围:', request.budget.name);
-        console.log('[AI分析] 图片数量:', request.photos.length);
+
 
         // 验证配置
         if (!DASHSCOPE_CONFIG.apiKey || !DASHSCOPE_CONFIG.appId) {
@@ -171,8 +170,10 @@ export async function analyzeSpace(
         const startTime = Date.now();
 
         // 调用 API
+        const url = `https://dashscope.aliyuncs.com/api/v1/apps/${DASHSCOPE_CONFIG.appId}/completion`;
+
         const response = await axios.post(
-            `${DASHSCOPE_CONFIG.baseUrl}/${DASHSCOPE_CONFIG.appId}/completion`,
+            url,
             requestData,
             {
                 headers: {

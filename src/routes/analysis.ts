@@ -33,10 +33,6 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
         try {
             const { room, budget, photos } = body;
 
-            console.log('[分析请求] 收到分析请求');
-            console.log('[分析请求] 空间类型:', room.name);
-            console.log('[分析请求] 预算范围:', budget.name);
-            console.log('[分析请求] 图片数量:', photos.length);
 
             // 验证必填字段
             if (!room?.name) {
@@ -63,37 +59,6 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
                 };
             }
 
-            // 验证每张图片的格式
-            for (let i = 0; i < photos.length; i++) {
-                const photo = photos[i];
-
-                if (!photo.url) {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Photo ${i}: url is required`
-                    };
-                }
-
-                if (!photo.type) {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Photo ${i}: type is required`
-                    };
-                }
-
-                // 验证 URL 格式
-                try {
-                    new URL(photo.url);
-                } catch {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Photo ${i}: invalid URL format`
-                    };
-                }
-            }
 
             // 调用 AI 分析
             const analysisResult = await analyzeSpace({

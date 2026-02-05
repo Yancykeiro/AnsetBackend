@@ -15,100 +15,11 @@ async function callDashScope() {
 
     const url = `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`;
 
-    console.log('╔' + '═'.repeat(78) + '╗');
-    console.log('║' + ' '.repeat(20) + '百炼智能体测试 - 居家养老空间规划' + ' '.repeat(20) + '║');
-    console.log('╚' + '═'.repeat(78) + '╝\n');
 
-    // // 测试 1: 基础问答
-    // console.log('========================================');
-    // console.log('测试 1: 基础问答');
-    // console.log('========================================\n');
-    // await testBasicChat(url, apiKey);
-
-    // // 测试 2: 单张图片分析
-    // console.log('\n========================================');
-    // console.log('测试 2: 单张图片分析');
-    // console.log('========================================\n');
-    // await testSingleImageAnalysis(url, apiKey);
-
-    // 测试 3: 多张带类型的图片分析（模拟卫生间场景）
-    console.log('\n========================================');
-    console.log('测试 3: 卫生间多图分析（带类型）');
-    console.log('========================================\n');
     await testBathroomAnalysis(url, apiKey);
 }
 
-/**
- * 测试基础文本问答
- */
-async function testBasicChat(url, apiKey) {
-    const data = {
-        input: {
-            prompt: "你是谁？你的主要功能是什么？"
-        },
-        parameters: {},
-        debug: {}
-    };
 
-    try {
-        const response = await axios.post(url, data, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 30000
-        });
-
-        if (response.status === 200) {
-            console.log('✅ 请求成功');
-            console.log(`Request ID: ${response.headers['x-request-id'] || 'N/A'}`);
-            console.log('\n【回答】:');
-            console.log(response.data.output.text);
-        } else {
-            console.log('❌ 请求失败');
-            console.log(`Status: ${response.status}`);
-            console.log(`Message: ${response.data.message}`);
-        }
-    } catch (error) {
-        console.error('❌ 调用失败:', error.message);
-        if (error.response) {
-            console.error(`状态码: ${error.response.status}`);
-            console.error(`错误详情: ${JSON.stringify(error.response.data, null, 2)}`);
-        }
-    }
-}
-
-/**
- * 测试单张图片分析
- */
-async function testSingleImageAnalysis(url, apiKey) {
-    const testImages = [
-        'https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg'
-    ];
-
-    const prompt = buildPrompt({
-        spaceType: '客厅',
-        imageTypes: ['整体空间'],
-        imageCount: 1,
-        budgetRange: '5000-10000元',
-        surveyAnswers: {
-            '居住人数': '1人',
-            '是否有行动不便': '是',
-            '特殊需求': '需要增加扶手'
-        }
-    });
-
-    const data = {
-        input: {
-            prompt,
-            images: testImages
-        },
-        parameters: {},
-        debug: {}
-    };
-
-    await executeAnalysis(url, apiKey, data, testImages);
-}
 
 /**
  * 测试卫生间多图分析（模拟实际场景）
