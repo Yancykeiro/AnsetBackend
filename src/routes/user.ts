@@ -70,3 +70,7 @@ export const userRoutes = new Elysia({ prefix: '/api/user' })
             data: user,
         };
     });
+
+
+
+
