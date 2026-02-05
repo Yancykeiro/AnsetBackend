@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { uploadRoutes } from './upload';
 import { testRoutes } from './test';
 import { reportRoutes } from './report';
+import { analysisRoutes } from './analysis.js';
 
 /**
  * 聚合所有路由
@@ -11,7 +12,8 @@ import { reportRoutes } from './report';
 export const routes = new Elysia()
     .use(uploadRoutes)
     .use(testRoutes)
-    .use(reportRoutes);
+    .use(reportRoutes)
+    .use(analysisRoutes);
 
 
 // 房间类型+改造预算+图片+问卷
