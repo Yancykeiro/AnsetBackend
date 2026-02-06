@@ -527,34 +527,109 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
     })
 
     /**
-     * 手动清理过期任务（管理接口）
-     * 
-     * @route DELETE /api/analysis/cleanup
-     */
-    .delete('/cleanup', async () => {
-        const now = Date.now();
-        const expired: string[] = [];
+   * 清理任务（管理接口）
+   * 
+   * @route DELETE /api/analysis/cleanup
+   * @description 清理过期任务或所有任务
+   * 
+   * @query all - 可选，设置为 'true' 时清除所有任务
+   * @query age - 可选，清除指定时间之前的任务（单位：分钟，默认 60）
+   * 
+   * @example
+   * // 清除超过 1 小时的任务（默认）
+   * curl -X DELETE http://localhost:4010/api/analysis/cleanup
+   * 
+   * // 清除所有任务
+   * curl -X DELETE "http://localhost:4010/api/analysis/cleanup?all=true"
+   * 
+   * // 清除超过 30 分钟的任务
+   * curl -X DELETE "http://localhost:4010/api/analysis/cleanup?age=30"
+   */
+    .delete('/cleanup', async ({ query, set }) => {
+        try {
+            const { all, age } = query;
 
-        for (const [taskId, job] of analysisJobs.entries()) {
-            const age = now - job.createdAt.getTime();
-            if (age > 3600000) { // 1 小时
-                analysisJobs.delete(taskId);
-                expired.push(taskId);
+            // 是否清除所有任务
+            const cleanAll = all === 'true' || all === '1';
+
+            // 过期时间（分钟）
+            const ageMinutes = age ? parseInt(age as string) : 60;
+            const ageMs = ageMinutes * 60 * 1000;
+
+            const now = Date.now();
+            const cleaned: string[] = [];
+            const stats = {
+                pending: 0,
+                processing: 0,
+                completed: 0,
+                failed: 0
+            };
+
+            if (cleanAll) {
+                // 清除所有任务
+                console.log('═══════════════════════════════════════════════════');
+                console.log('[任务清理] ⚠️  清除所有任务');
+                console.log('[任务清理] 总任务数:', analysisJobs.size);
+                console.log('[任务清理] 时间:', new Date().toISOString());
+                console.log('═══════════════════════════════════════════════════');
+
+                for (const [taskId, job] of analysisJobs.entries()) {
+                    stats[job.status]++;
+                    cleaned.push(taskId);
+                }
+
+                analysisJobs.clear(); // 清空所有任务
+
+                console.log('[任务清理] ✅ 已清除所有任务');
+                console.log('[任务清理] 清除数量:', cleaned.length);
+
+            } else {
+                // 仅清除过期任务
+                console.log('═══════════════════════════════════════════════════');
+                console.log(`[任务清理] 清除超过 ${ageMinutes} 分钟的任务`);
+                console.log('[任务清理] 时间:', new Date().toISOString());
+                console.log('═══════════════════════════════════════════════════');
+
+                for (const [taskId, job] of analysisJobs.entries()) {
+                    const taskAge = now - job.createdAt.getTime();
+
+                    if (taskAge > ageMs) {
+                        stats[job.status]++;
+                        analysisJobs.delete(taskId);
+                        cleaned.push(taskId);
+                    }
+                }
+
+                console.log('[任务清理] ✅ 清理完成');
+                console.log('[任务清理] 清除数量:', cleaned.length);
+                console.log('[任务清理] 剩余数量:', analysisJobs.size);
             }
+
+            return {
+                success: true,
+                data: {
+                    cleaned: cleaned.length,
+                    remaining: analysisJobs.size,
+                    cleanedTasks: cleaned,
+                    stats: {
+                        cleaned: stats,
+                        mode: cleanAll ? 'all' : `expired (${ageMinutes} minutes)`,
+                        timestamp: new Date().toISOString()
+                    }
+                }
+            };
+
+        } catch (error) {
+            console.error('[任务清理] 清理失败:', error);
+
+            set.status = 500;
+            return {
+                success: false,
+                error: '任务清理失败',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            };
         }
-
-        console.log(`[任务清理] 清理了 ${expired.length} 个过期任务`);
-
-        return {
-            success: true,
-            data: {
-                cleaned: expired.length,
-                remaining: analysisJobs.size,
-                expiredTasks: expired
-            }
-        };
     })
-
     /**
         * 获取所有任务列表（管理接口）
         * 
@@ -730,12 +805,13 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
 // "budget": { "name": "小于5000元", "min": 0, "max": 5000 },
 // "photos": [
 //     { "url": "https://anset.top/static/testcamera/tongdao.png", "type": "通道" },
-//     { "url": "https://anset.top/static/testcamera/xishouchi.png", "type": "洗手池" },
-//     { "url": "https://anset.top/static/testcamera/zuobainqi.png", "type": "坐便器" },
-//     { "url": "https://anset.top/static/testcamera/linyu.png", "type": "淋浴" }
+//     { "url": "https://anset.top/static/testcamera/xishouchi.jpg", "type": "洗手池" },
+//     { "url": "https://anset.top/static/testcamera/zuobainqi.jpg", "type": "坐便器" },
+//     { "url": "https://anset.top/static/testcamera/linyu.jpg", "type": "淋浴" }
 // ]
 //   }' -v
 
 
 
 // https://anset.top/api/analysis/result/6ewBpJgLzdL-
+// https://anset.top/api/analysis/tasks
