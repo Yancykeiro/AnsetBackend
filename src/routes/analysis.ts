@@ -601,6 +601,10 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
                 createdAt: string;
                 completedAt?: string;
                 elapsedTime: number;
+                riskCount?: number;
+                highRiskCount?: number;
+                mediumRiskCount?: number;
+                lowRiskCount?: number;
             }> = [];
 
             for (const [taskId, job] of analysisJobs.entries()) {
@@ -614,6 +618,29 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
                     ? (job.completedAt.getTime() - job.createdAt.getTime()) / 1000
                     : (Date.now() - job.createdAt.getTime()) / 1000;
 
+                // 统计风险点（仅对已完成的任务）
+                let riskCount = 0;
+                let highRiskCount = 0;
+                let mediumRiskCount = 0;
+                let lowRiskCount = 0;
+
+                if (job.status === 'completed' && job.result && Array.isArray(job.result)) {
+                    riskCount = job.result.length;
+
+                    // 统计各等级风险数量
+                    job.result.forEach((risk: any) => {
+                        const level = risk.risk_level || risk.level || '中'; // 兼容旧数据
+
+                        if (level === '高' || level === 'high') {
+                            highRiskCount++;
+                        } else if (level === '中' || level === 'medium') {
+                            mediumRiskCount++;
+                        } else if (level === '低' || level === 'low') {
+                            lowRiskCount++;
+                        }
+                    });
+                }
+
                 tasks.push({
                     taskId,
                     status: job.status,
@@ -624,7 +651,11 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
                     error: job.error,
                     createdAt: job.createdAt.toISOString(),
                     completedAt: job.completedAt?.toISOString(),
-                    elapsedTime: Math.floor(elapsed)
+                    elapsedTime: Math.floor(elapsed),
+                    riskCount: job.status === 'completed' ? riskCount : undefined,
+                    highRiskCount: job.status === 'completed' ? highRiskCount : undefined,
+                    mediumRiskCount: job.status === 'completed' ? mediumRiskCount : undefined,
+                    lowRiskCount: job.status === 'completed' ? lowRiskCount : undefined
                 });
             }
 
@@ -664,7 +695,6 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
             };
         }
     })
-
     /**
      * 获取任务统计信息（管理接口）
      * 

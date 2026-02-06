@@ -9,7 +9,7 @@ const DASHSCOPE_CONFIG = {
     // apiKey: process.env.DASHSCOPE_API_KEY || 'sk-8d870d21086549d584c50b1f1980d929',
     // appId: process.env.DASHSCOPE_APP_ID || '80cdc3bc489749398bf5f3055dd2ff2d',
     baseUrl: 'https://dashscope.aliyuncs.com/api/v1/apps',
-    timeout: 120000 // 2分钟超时
+    timeout: 1200000 // 2分钟超时
 };
 
 /**
@@ -30,16 +30,6 @@ export interface AnalysisRequest {
     }>;
 }
 
-/**
- * 单个改造建议
- */
-export interface Recommendation {
-    image_index: number;
-    image_type: string;
-    risk_title: string;
-    risk_analysis: string;
-    renovation_suggestion: string;
-}
 
 /**
  * AI 分析响应
@@ -69,7 +59,7 @@ function buildPrompt(config: {
 你是一名专业的居家养老空间规划师，根据知识库中的知识和老年人居住习惯，判断图片中的${spaceType}风险点，并提出改造建议。
 
 ## 任务说明
-你的任务是判断图片中的风险并给出风险标题、风险原因和改造方法。
+你的任务是判断图片中的风险，给出风险标题、风险等级、风险原因和改造方法。
 
 ## 基本信息
 - 空间类型: ${spaceType}
@@ -85,10 +75,26 @@ function buildPrompt(config: {
 2. 识别功能性问题（扶手缺失、高度不合理、收纳不便等）
 3. 考虑老年人的特殊需求（行动不便、视力下降、反应迟缓等）
 
-### 风险优先级
-- 优先识别可能导致跌倒、碰撞等安全问题的风险
-- 其次关注影响日常使用便利性的问题
-- 最后考虑美观和舒适度提升
+### 风险等级评估标准
+根据以下标准判断每个风险点的等级：
+
+**高风险**：
+- 可能直接导致跌倒、碰撞等人身伤害
+- 影响紧急情况下的逃生或求助
+- 可能造成严重的财产损失
+- 例如：地面湿滑、无扶手、照明严重不足、尖锐物品外露
+
+**中风险**：
+- 影响日常生活便利性和舒适度
+- 长期使用可能积累成安全隐患
+- 对特定情况下的老年人有较大影响
+- 例如：收纳不便、高度不合理、空间拥挤、通风不良
+
+**低风险**：
+- 轻微影响使用体验
+- 主要涉及美观和舒适度
+- 改善后能提升生活品质但非必要
+- 例如：颜色搭配、装饰布置、轻微的收纳问题
 
 ## 输出格式
 
@@ -99,9 +105,18 @@ function buildPrompt(config: {
     {
       "image_index": 0,
       "image_type": "通道",
+      "risk_level": "高",
       "risk_title": "地面过于光滑",
       "risk_analysis": "瓷砖地面遇水易滑，老年人容易摔倒，可能造成骨折等严重后果。",
       "renovation_suggestion": "建议更换为**防滑瓷砖**或铺设**防滑地垫**，关键区域安装**L型扶手**。"
+    },
+    {
+      "image_index": 0,
+      "image_type": "通道",
+      "risk_level": "中",
+      "risk_title": "照明不足",
+      "risk_analysis": "走廊光线昏暗，老年人视力下降容易看不清障碍物。",
+      "renovation_suggestion": "增加**感应式夜灯**，在墙面安装**LED灯带**提供充足照明。"
     }
   ]
 }
@@ -110,12 +125,14 @@ function buildPrompt(config: {
 ### 输出内容要求
 1. **image_index**: 图片索引（0开始）
 2. **image_type**: 图片类型（${imageTypes.join('、')}）
-3. **risk_title**: 风险标题（10字以内），例如「地面过于光滑」、「照明不足」
-4. **risk_analysis**: 风险原因（30字以内），专业简洁地描述该风险可能引发的问题
-5. **renovation_suggestion**: 改造建议（50字以内），若包含需购买的物品请用**加粗**标注
+3. **risk_level**: 风险等级（必须是「高」、「中」、「低」之一）
+4. **risk_title**: 风险标题（10字以内），例如「地面过于光滑」、「照明不足」
+5. **risk_analysis**: 风险原因（30字以内），专业简洁地描述该风险可能引发的问题
+6. **renovation_suggestion**: 改造建议（50字以内），若包含需购买的物品请用**加粗**标注
 
 ### 注意事项
 - 每张图片至少识别1-3个风险点
+- 优先识别高风险问题，确保老年人居住安全
 - 如果某张图片无明显风险，也需说明现状良好
 - 建议必须具体可操作，包含材料、尺寸、安装位置等细节
 - 建议的产品必须符合老年人使用习惯（如易操作、防滑、醒目等）
@@ -124,7 +141,17 @@ function buildPrompt(config: {
 请基于知识库中的专业知识进行分析，确保建议符合居家养老空间改造标准。
 `.trim();
 }
-
+/**
+ * 单个改造建议
+ */
+export interface Recommendation {
+    image_index: number;
+    image_type: string;
+    risk_level: '高' | '中' | '低'; // ✅ 新增风险等级
+    risk_title: string;
+    risk_analysis: string;
+    renovation_suggestion: string;
+}
 /**
  * 调用百炼智能体进行空间分析
  * 
