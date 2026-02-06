@@ -21,25 +21,25 @@ interface AnalysisJob {
 
 const analysisJobs = new Map<string, AnalysisJob>();
 
-/**
- * 清理过期任务（1小时后自动清理）
- */
-setInterval(() => {
-    const now = Date.now();
-    const expiredJobs: string[] = [];
+// /**
+//  * 清理过期任务（1小时后自动清理）
+//  */
+// setInterval(() => {
+//     const now = Date.now();
+//     const expiredJobs: string[] = [];
 
-    for (const [taskId, job] of analysisJobs.entries()) {
-        const age = now - job.createdAt.getTime();
-        if (age > 3600000) { // 1 小时
-            analysisJobs.delete(taskId);
-            expiredJobs.push(taskId);
-        }
-    }
+//     for (const [taskId, job] of analysisJobs.entries()) {
+//         const age = now - job.createdAt.getTime();
+//         if (age > 3600000) { // 1 小时
+//             analysisJobs.delete(taskId);
+//             expiredJobs.push(taskId);
+//         }
+//     }
 
-    if (expiredJobs.length > 0) {
-        console.log(`[任务清理] 清理了 ${expiredJobs.length} 个过期任务`);
-    }
-}, 300000); // 每 5 分钟清理一次
+//     if (expiredJobs.length > 0) {
+//         console.log(`[任务清理] 清理了 ${expiredJobs.length} 个过期任务`);
+//     }
+// }, 300000); // 每 5 分钟清理一次
 
 /**
  * AI 分析路由
@@ -556,6 +556,116 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
     })
 
     /**
+        * 获取所有任务列表（管理接口）
+        * 
+        * @route GET /api/analysis/tasks
+        * @description 获取所有分析任务的详细信息，包括请求参数和分析结果
+        * 
+        * @query status - 可选，按状态筛选任务 (pending | processing | completed | failed)
+        * @query limit - 可选，限制返回数量，默认 50
+        * 
+        * @example
+        * // 获取所有任务
+        * curl http://localhost:4010/api/analysis/tasks | jq '.'
+        * 
+        * // 获取已完成的任务
+        * curl http://localhost:4010/api/analysis/tasks?status=completed | jq '.'
+        * 
+        * // 限制返回数量
+        * curl http://localhost:4010/api/analysis/tasks?limit=10 | jq '.'
+        */
+    .get('/tasks', async ({ query, set }) => {
+        try {
+            const { status, limit } = query;
+            const maxLimit = limit ? parseInt(limit as string) : 50;
+
+            // 验证 status 参数
+            if (status && !['pending', 'processing', 'completed', 'failed'].includes(status as string)) {
+                set.status = 400;
+                return {
+                    success: false,
+                    error: 'Invalid status',
+                    message: 'status must be one of: pending, processing, completed, failed'
+                };
+            }
+
+            // 收集所有任务
+            const tasks: Array<{
+                taskId: string;
+                status: string;
+                room: { name: string };
+                budget: { name: string; min: number; max: number };
+                photos: Array<{ url: string; type: string }>;
+                result?: any;
+                error?: string;
+                createdAt: string;
+                completedAt?: string;
+                elapsedTime: number;
+            }> = [];
+
+            for (const [taskId, job] of analysisJobs.entries()) {
+                // 状态筛选
+                if (status && job.status !== status) {
+                    continue;
+                }
+
+                // 计算已用时间
+                const elapsed = job.completedAt
+                    ? (job.completedAt.getTime() - job.createdAt.getTime()) / 1000
+                    : (Date.now() - job.createdAt.getTime()) / 1000;
+
+                tasks.push({
+                    taskId,
+                    status: job.status,
+                    room: job.request.room,
+                    budget: job.request.budget,
+                    photos: job.request.photos,
+                    result: job.result,
+                    error: job.error,
+                    createdAt: job.createdAt.toISOString(),
+                    completedAt: job.completedAt?.toISOString(),
+                    elapsedTime: Math.floor(elapsed)
+                });
+            }
+
+            // 按创建时间倒序排序（最新的在前）
+            tasks.sort((a, b) => {
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            });
+
+            // 限制返回数量
+            const limitedTasks = tasks.slice(0, maxLimit);
+
+            console.log(`[获取任务列表] 返回 ${limitedTasks.length} 个任务 (总共 ${tasks.length} 个)`);
+
+            return {
+                success: true,
+                data: {
+                    tasks: limitedTasks,
+                    total: tasks.length,
+                    returned: limitedTasks.length,
+                    stats: {
+                        pending: tasks.filter(t => t.status === 'pending').length,
+                        processing: tasks.filter(t => t.status === 'processing').length,
+                        completed: tasks.filter(t => t.status === 'completed').length,
+                        failed: tasks.filter(t => t.status === 'failed').length
+                    }
+                }
+            };
+
+        } catch (error) {
+            console.error('[获取任务列表] 查询失败:', error);
+
+            set.status = 500;
+            return {
+                success: false,
+                error: '获取任务列表失败',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    })
+
+    /**
      * 获取任务统计信息（管理接口）
      * 
      * @route GET /api/analysis/stats
@@ -578,3 +688,24 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
             data: stats
         };
     });
+
+
+
+
+
+// curl -X POST https://anset.top/api/analysis/space/async \
+// -H "Content-Type: application/json" \
+// -d '{
+// "room": { "name": "卫生间" },
+// "budget": { "name": "小于5000元", "min": 0, "max": 5000 },
+// "photos": [
+//     { "url": "https://anset.top/static/testcamera/tongdao.png", "type": "通道" },
+//     { "url": "https://anset.top/static/testcamera/xishouchi.png", "type": "洗手池" },
+//     { "url": "https://anset.top/static/testcamera/zuobainqi.png", "type": "坐便器" },
+//     { "url": "https://anset.top/static/testcamera/linyu.png", "type": "淋浴" }
+// ]
+//   }' -v
+
+
+
+// https://anset.top/api/analysis/result/6ewBpJgLzdL-
