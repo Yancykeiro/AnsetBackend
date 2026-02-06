@@ -286,24 +286,6 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
                 };
             }
 
-            // 验证 URL 格式
-            for (let i = 0; i < photos.length; i++) {
-                const photo = photos[i];
-                if (!photo.url || !photo.type) {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Photo ${i}: url and type are required`
-                    };
-                }
-                if (!photo.url.startsWith('http://') && !photo.url.startsWith('https://')) {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Photo ${i}: URL must start with http:// or https://`
-                    };
-                }
-            }
 
             // 生成任务 ID
             const taskId = nanoid(12);
