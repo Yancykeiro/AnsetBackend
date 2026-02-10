@@ -811,7 +811,15 @@ export const analysisRoutes = new Elysia({ prefix: '/api/analysis' })
 // ]
 //   }' -v
 
-
+// curl -X POST https://anset.top/api/analysis/space/async \
+// -H "Content-Type: application/json" \
+// -d '{
+// "room": { "name": "卫生间" },
+// "budget": { "name": "小于5000元", "min": 0, "max": 5000 },
+// "photos": [
+//     { "url": "https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg", "type": "通道" },
+// ]
+//   }' -v
 
 // https://anset.top/api/analysis/result/6ewBpJgLzdL-
 // https://anset.top/api/analysis/tasks
